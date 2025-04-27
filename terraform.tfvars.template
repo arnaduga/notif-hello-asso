@@ -1,0 +1,18 @@
+# HELLO ASSO Settings
+api_url       = "https://api.helloasso.com/v5/organizations/entreprendre-en-plateau-briard/payments"
+api_url_token = "https://api.helloasso.com/oauth2/token"
+
+## HELLO ASSO AuthN
+api_client_id     = "abc" # This is sensitive, keep it secure!
+api_client_secret = "abc" # This is sensitive, keep it secure!
+
+
+# Project
+environment    = "dev"
+project_prefix = "helloasso-payments"
+random_number  = "627364019283" # Random
+project_context = "myAsso"
+notification_email = "arnaduga@example.com"
+
+enable_scheduled_execution = true                # Set to true to enable the CloudWatch schedule
+schedule_expression        = "cron(0 6 1 * ? *)" # Monthly, at 6am UTC
