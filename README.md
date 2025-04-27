@@ -1,36 +1,41 @@
-# API Processor Lambda with Terraform/OpenTofu
+# AWS Payements Extractor for Hello Asso
 
-This project extracts payements inforamtion form Hello Asso API, and prepare a synthesis CSV file, send the link via SNS Email:
+## Introduction
 
-1. Retrieves API credentials from AWS Parameter Store
-2. Calls an external API using those credentials
-3. Processes the API response data
-4. Generates a CSV file with the processed data
-5. Stores the file in S3
-6. Generated a Presigned URL
-7. Send a SNS notification with the appropriate URL
+### The "Why"
 
+Hello Asso is a wonderful solution for French association to collect money, for subscription, payment for items, etc.
 
-## Architecture
+But the access to the information of the Hello Asso is "full or nothing": hard to give an access to the accounting team to only the payements received.
 
-The solution consists of the following AWS resources:
-- Lambda function with Python 3.11 runtime
-- IAM role with permissions for Parameter Store, S3, SNS, and CloudWatch Logs
-- SNS topic for notifications with processed data
-- Parameter Store parameters for API URL, API Client ID, API Client Secret
-- S3 with a document lifecycle to keep the files 2 years
-- CloudWatch Log Group for Lambda logs
-- CloudWatch Event Rule for scheduled execution
+That is why I decided to develop a small thing to automate the data extraction on a regular basis.
+
+### The "How"
+
+On AWS, this project builds a set of compenents:
+- A Lambda function, the core of the system
+- Some items in SSM Parameter Store: just a way to store some secrets, like credentials
+- An S3 Bucket, to store all the extraction file (once by month, during 2 years)
+- An SNS topic, with one email notification (optional), to get the URL to the extracted file
+
+The core Lambda function is using the [Hello Asso API](https://dev.helloasso.com/reference) to make a call to `/payments` API endpoint.
+
+Then, the retrieve infomation if parsed, and reformated (with translation from technical statuses, for instance, to French sentences).
+
+The generated CSV file is then stored into S3 bucket and an SNS message is pushed, including a URL (presigned).
+
+That's all
+
 
 ## Setup Instructions
 
 1. Clone this repository:
    ```
-   $ git clone <repository-url>
-   $ cd <repository-directory>
+   $ git clone https://github.com/arnaduga/notif-hello-asso
+   $ cd notif-hello-asso
    ```
 
-2. Create a `terraform.tfvars` file with your configuration:
+2. Create a `terraform.tfvars` file for your configuration:
    ```
    $ cp terraform.tfvars.template terraform.tfvars
    ```
@@ -47,9 +52,10 @@ The solution consists of the following AWS resources:
 
 
    # Project
-   environment    = "dev"
-   project_prefix = "helloasso-payments"
-   random_number  = "627364019283" # Random
+   environment     = "dev"
+   project_prefix  = "helloasso-payments"
+   project_context = "mwa"
+   random_number   = "627364019283" # Random
 
    notification_email = "arnaduga@example.com"
 
@@ -57,34 +63,41 @@ The solution consists of the following AWS resources:
    schedule_expression        = "cron(0 6 1 * ? *)" # Monthly, at 6am UTC
    ```
 
+   In the `api_url`, replace the `<organization_slug>` by your organization slug: you can locate it in the dashboard URL : `https://admin.helloasso.com/<yourSLUGisHERE>/accueil`
+
+   The `api_client_id` and `api_client_secret` can be found in the Integration and API page, located here: `https://admin.helloasso.com/<yourSLUGhere>/integrations`
+
+   The `environment`is just a way to distinguish mmultiple deployment. It impacts some resource names and tags.
+
+   The `project_prefix` is mainly for naming: it helps to better identify resources
+   The `project_context` is for tagging: helps to identify costs
+
+   The `random_number` is a random number (or event text by the way) used to generate a UNIQUE S3 bucket name.
+
+   The `notification_email` is used to set a subscription to the SNS Topic. Just after applying this config, remind to VALIDATE the subscribtion thanks to the link received by email.
+
+
+   The last 2 variables are optional and use if you want the Lmabda function to be scheduled on a regular basis, following the cron syntax.
+
 
 3. Prepare the modules for the Pyhton script:
+
+   The Lambda function works with some dependancies. Prior to apply the Terraform, you have to prepare the modules.
+
+   However, no need to `venv` or to instal them globally, use this syntax to put the deps into `modules` subfolder: the Python script is expecting it.
+
    ```
    $ cd lambda
    $ pip install -r requirements.txt -t modules
    ```
 
-4. Initialize Terraform:
+4. Classical Terraform apply
    ```
    $ terraform init
-   ```
-
-5. Plan the deployment:
-   ```
-   terraform plan -var-file terrafor.tfvars
-   ```
-
-6. Apply the configuration:
-   ```
-   terraform apply -var-file terrafor.tfvars
+   $ terraform plan -var-file terrafor.tfvars
+   $ terraform apply -var-file terrafor.tfvars
    ```
    
-7. Confirm the deployment by checking the outputs:
-   ```
-   terraform output
-   ```
-
-8. In your mailbox, confirm you want to receive SNS notifications emails.
 
 ## Security Considerations
 
