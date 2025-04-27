@@ -12,6 +12,7 @@ environment    = "dev"
 project_prefix = "helloasso-payments"
 random_number  = "627364019283" # Random
 project_context = "myAsso"
+
 notification_email = "arnaduga@example.com"
 
 enable_scheduled_execution = true                # Set to true to enable the CloudWatch schedule
