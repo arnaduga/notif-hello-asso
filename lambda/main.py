@@ -58,7 +58,7 @@ def convert_json_to_csv(json_data_list):
     ]
 
     output = io.StringIO()
-    writer = csv.writer(output, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+    writer = csv.writer(output, delimiter=';', quotechar='"', quoting=csv.QUOTE_ALL, lineterminator='\n')
     writer.writerow(headers)
 
     for payment in json_data_list:
@@ -85,7 +85,7 @@ def convert_json_to_csv(json_data_list):
                         meta = refund.get('meta', {}) or {}
                         created_at_str = meta.get('createdAt')
                         if created_at_str:
-                            created_at_dt = datetime.fromisoformat(created_at_str.replace('+02:00', '+0200'))
+                            created_at_dt = datetime.fromisoformat(created_at_str)
                             date_str = created_at_dt.strftime('%d/%m/%Y')
                             formatted_refunds.append(f"Remboursement de {amount:.2f} le {date_str}")
                         else:
@@ -174,8 +174,6 @@ def get_api_token(token_url, client_id, client_secret):
     except Exception as e:
         logger.error(f"Unexpected error during token retrieval: {e}")
         raise
-
-
 
 def call_api(base_api_url, token, from_date_str=None, to_date_str=None):
     """
@@ -277,8 +275,8 @@ def save_to_s3_and_get_presigned_url(csv_content, bucket_name, environment, expi
         s3_client.put_object(
             Bucket=bucket_name,
             Key=s3_key,
-            Body=csv_content.encode('utf-8'),
-            ContentType='text/csv'
+            Body=csv_content.encode('utf-8-sig'),
+            ContentType='text/csv; charset=utf-8'
         )
         logger.info("Successfully uploaded CSV data to S3.")
 
