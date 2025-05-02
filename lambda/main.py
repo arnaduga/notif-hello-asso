@@ -26,13 +26,14 @@ PAYMENT_STATE_TRANSLATIONS = {
     "Contested": "Paiement contesté"
 }
 
+# https://dev.helloasso.com/docs/status-des-versements
 CASHOUT_STATE_TRANSLATIONS = {
-    "CashedOut": "Versé sur le compte",
+    "CashedOut": "Versé sur le compte bancaire",
     "WaitingForCashOutConfirmation": "En attente de confirmation de versement",
     "Refunding" : "Paiement en cours de remboursement",
     "Refunded": "Paiement remboursé",
     "TransferInProgress": "Le paiement est en cours de transfert vers le compte",
-    "Transfered": "Non versé"
+    "Transfered": "Somme transférée sur le compte HelloAsso de l'association"
 }
 
 def convert_json_to_csv(json_data_list):
