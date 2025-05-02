@@ -57,7 +57,7 @@ That's all
    project_context = "mwa"
    random_number   = "627364019283" # Random
 
-   notification_email = "arnaduga@example.com"
+   notification_emails = ["arnaduga@example.com"]
 
    enable_scheduled_execution = true                # Set to true to enable the CloudWatch schedule
    schedule_expression        = "cron(0 6 1 * ? *)" # Monthly, at 6am UTC
