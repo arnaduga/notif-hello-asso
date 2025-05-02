@@ -20,9 +20,6 @@ locals {
 }
 
 
-
-
-
 #############################
 # Lambda Function Resources #
 #############################
@@ -318,10 +315,10 @@ resource "aws_sns_topic" "results_notification" {
 
 # Souscription Email (conditionnelle)
 resource "aws_sns_topic_subscription" "email_subscription" {
-  count     = var.notification_email != "" ? 1 : 0
+  for_each  = toset(var.notification_emails)
   topic_arn = aws_sns_topic.results_notification.arn
   protocol  = "email"
-  endpoint  = var.notification_email
+  endpoint  = each.value
 }
 
 

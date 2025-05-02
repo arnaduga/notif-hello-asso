@@ -65,10 +65,10 @@ variable "schedule_expression" {
   default     = "rate(1 day)"
 }
 
-variable "notification_email" {
-  description = "Email address to receive SNS notifications with the presigned URL (optional)"
-  type        = string
-  default     = ""
+variable "notification_emails" {
+  description = "List of emails address to receive SNS notifications with the presigned URL (optional)"
+  type        = list(string)
+  default     = []
 }
 
 variable "presigned_url_expiration_seconds" {
