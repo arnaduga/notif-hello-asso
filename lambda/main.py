@@ -203,52 +203,100 @@ def call_api(base_api_url, token, from_date_str=None, to_date_str=None):
         Exception: Pour d'autres erreurs inattendues.
     """
     page_size = 100
+    current_continuation_token = None
+    page_num = 1
+    all_items = []
 
     headers = {'Authorization': f'Bearer {token}'}
-    params = {'pageSize': page_size}
-
+    base_params = {'pageSize': page_size}
 
     if from_date_str:
-        params['from'] = from_date_str
+        base_params['from'] = from_date_str
     if to_date_str:
-        params['to'] = to_date_str
-
-    params['withCount'] = "true"
-
-    logger.info(f"Appel de l'API (sans pagination) : {base_api_url}, Params: {params}")
+        base_params['to'] = to_date_str
 
 
-    try:
-        response = requests.get(base_api_url, headers=headers, params=params, timeout=30)
-        response.raise_for_status() # Check for HTTP errors (4xx, 5xx)
-        page_response = response.json()
+    base_params['withCount'] = "true"
 
-        data_key = 'data'
-        items = page_response.get(data_key)
 
-        if items is not None and isinstance(items, list):
-            logger.info(f"{len(items)} éléments récupérés depuis l'API.")
-            return items
+    while True:
+
+        params = base_params.copy()
+        if current_continuation_token:
+            params['continuationToken'] = current_continuation_token
+            logger.info(f"Appel API page {page_num} avec continuationToken: {current_continuation_token[:10]}...")
         else:
-            logger.warning(f"Clé '{data_key}' non trouvée ou n'est pas une liste dans la réponse. Retour d'une liste vide.")
-            return []
+            logger.info(f"Appel API page {page_num} (initial) : {base_api_url}, Params: {params}")
 
-    except requests.exceptions.RequestException as e:
-        if e.response is not None:
-             logger.error(f"Erreur lors de l'appel API. Statut: {e.response.status_code}. Réponse: {e.response.text[:500]}")
-        else:
-             logger.error(f"Erreur lors de l'appel API: {e}")
-        raise
-    except json.JSONDecodeError as e:
-        logger.error(f"Erreur de décodage JSON: {e}")
         try:
-            logger.error(f"Texte de la réponse : {response.text[:500]}")
-        except NameError:
-            pass
-        raise
-    except Exception as e:
-        logger.error(f"Erreur inattendue lors de l'appel API: {e}", exc_info=True)
-        raise
+            response = requests.get(base_api_url, headers=headers, params=params, timeout=30)
+            response.raise_for_status() # Check for HTTP errors (4xx, 5xx)
+            page_response = response.json()
+
+            data_key = 'data'
+            pagination_key = 'pagination'
+
+            current_page_items = page_response.get(data_key)
+            pagination_info = page_response.get(pagination_key)
+
+            if current_page_items is None or not isinstance(current_page_items, list):
+                logger.warning(f"Clé '{data_key}' non trouvée ou n'est pas une liste dans la réponse de la page {page_num}. Arrêt de la pagination.")
+                break 
+
+            if pagination_info is None or not isinstance(pagination_info, dict):
+                    logger.warning(f"Clé '{pagination_key}' non trouvée ou n'est pas un dictionnaire dans la réponse de la page {page_num}. Arrêt de la pagination.")
+                    all_items.extend(current_page_items) 
+                    break
+
+            logger.info(f"Page {page_num}: {len(current_page_items)} éléments récupérés.")
+            all_items.extend(current_page_items)
+
+            current_page_index = pagination_info.get('pageIndex')
+            total_pages = pagination_info.get('totalPages')
+            next_continuation_token = pagination_info.get('continuationToken')
+
+            if total_pages is None or current_page_index is None:
+                 logger.warning(f"Informations de pagination manquantes (totalPages ou pageIndex) sur la page {page_num}. Arrêt.")
+                 break
+
+            if current_page_index >= total_pages:
+                logger.info(f"Fin de la pagination atteinte (pageIndex {current_page_index} >= totalPages {total_pages}).")
+                break
+
+            if next_continuation_token:
+                current_continuation_token = next_continuation_token
+                page_num += 1
+            else:
+                logger.warning(f"Arrêt car pageIndex ({current_page_index}) < totalPages ({total_pages}) mais aucun continuationToken n'a été fourni.")
+                break
+
+
+
+        except requests.exceptions.RequestException as e:
+            if e.response is not None:
+                    logger.error(f"Erreur lors de l'appel API (page {page_num}). Statut: {e.response.status_code}. Réponse: {e.response.text[:500]}")
+            else:
+                    logger.error(f"Erreur réseau lors de l'appel API (page {page_num}): {e}")
+            raise # Propager l'exception pour arrêter le processus global
+        except json.JSONDecodeError as e:
+            logger.error(f"Erreur de décodage JSON (page {page_num}): {e}")
+            try:
+                logger.error(f"Texte de la réponse : {response.text[:500]}")
+            except NameError: # response pourrait ne pas être définie si l'erreur est très tôt
+                pass
+            raise # Propager l'exception
+        except KeyError as e:
+                logger.error(f"Clé manquante dans la réponse API (page {page_num}): {e}. Réponse reçue: {page_response}")
+                raise # Propager l'exception
+        except Exception as e:
+            logger.error(f"Erreur inattendue lors de l'appel API (page {page_num}): {e}", exc_info=True)
+            raise # Propager l'exception
+
+    logger.info(f"Pagination terminée. Total de {len(all_items)} éléments récupérés sur {page_num} page(s) traitée(s).")
+
+    return all_items
+
+
 
 def save_to_s3_and_get_presigned_url(csv_content, bucket_name, environment, expiration_seconds):
     """
@@ -270,7 +318,7 @@ def save_to_s3_and_get_presigned_url(csv_content, bucket_name, environment, expi
 
         timestamp = now_utc.strftime("%Y-%m-%dT%H%M%SZ")
         folder = f"{now_utc.year}/{now_utc.month:02d}-{now_utc.day:02d}"
-        s3_key = f"{environment}/{folder}/HelloAsso-Payemnets-Extract-{timestamp}.csv"
+        s3_key = f"{environment}/{folder}/HelloAsso-Payements-Extract-{timestamp}.csv"
         logger.info(f"Uploading CSV data to s3://{bucket_name}/{s3_key}")
 
         s3_client.put_object(
