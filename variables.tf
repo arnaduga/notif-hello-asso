@@ -1,6 +1,6 @@
 variable "aws_region" {
-  description = "The AWS region to deploy resources"
   type        = string
+  description = "The AWS region to deploy resources"
   default     = "eu-west-1"
 }
 
@@ -75,4 +75,16 @@ variable "presigned_url_expiration_seconds" {
   description = "Expiration time in seconds for the S3 presigned URL"
   type        = number
   default     = 172800
+}
+
+variable "success_sns_subject_template" {
+  description = "SNS subject template for success notification"
+  type        = string
+  default     = "Extraction paiements HelloAsso ({environment}) : du {from_date} au {to_date}"
+}
+
+variable "error_sns_subject_template" {
+  description = "SNS subject template for error notification"
+  type        = string
+  default     = "RREUR Traitement HelloAsso ({environment}) : du {from_date} au {to_date}"
 }

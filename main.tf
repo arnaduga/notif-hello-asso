@@ -54,6 +54,8 @@ resource "aws_lambda_function" "api_processor" {
       PRESIGNED_URL_EXPIRATION     = tostring(var.presigned_url_expiration_seconds)
       ENVIRONMENT                  = var.environment
       SNS_TOPIC_ARN                = aws_sns_topic.results_notification.arn
+      SUCCESS_SNS_SUBJECT_TEMPLATE = var.success_sns_subject_template
+      ERROR_SNS_SUBJECT_TEMPLATE   = var.error_sns_subject_template
 
     }
   }

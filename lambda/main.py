@@ -384,6 +384,8 @@ def lambda_handler(event, context):
         s3_bucket_name = os.environ['S3_BUCKET_NAME']
         presigned_url_expiration_seconds = int(os.environ['PRESIGNED_URL_EXPIRATION'])
         sns_topic_arn = os.environ.get('SNS_TOPIC_ARN')
+        success_sns_subject_template = os.environ['SUCCESS_SNS_SUBJECT_TEMPLATE']
+        error_sns_subject_template = os.environ['ERROR_SNS_SUBJECT_TEMPLATE']
 
 
         # Récupérer les valeurs des paramètres depuis SSM
@@ -446,7 +448,11 @@ def lambda_handler(event, context):
 
             expiration_str = expiration_datetime.strftime("%Y-%m-%d %H:%M:%S %Z")
 
-            sns_subject = f"Extraction paiements HelloAsso : du {from_date_str} au {to_date_str}"
+            sns_subject = success_sns_subject_template.format(
+                from_date=from_date_str,
+                to_date=to_date_str,
+                environment=environment
+            )
 
             warning_message = ""
             if len(all_api_items) == 100:
@@ -495,7 +501,12 @@ def lambda_handler(event, context):
              from_date_val = locals().get('from_date_str', 'N/A')
              to_date_val = locals().get('to_date_str', 'N/A')
              page_val = locals().get('page_num', 'N/A')
-             error_subject = f"ERREUR Traitement HelloAsso ({from_date_val} à {to_date_val}) - {environment}"
+             error_subject = error_sns_subject_template.format(
+                 from_date=from_date_val,
+                 to_date=to_date_val,
+                 environment=environment
+             )
+
              error_message = (
                  f"L'exécution de la Lambda a échoué pour la période {from_date_val} à {to_date_val}.\n"
                  f"(Erreur potentiellement survenue lors du traitement de la page {page_val})\n"
