@@ -44,3 +44,7 @@ lambda/modules
 
 
 backend.tf
+
+# tofu apply
+apply.sh
+plan.sh
