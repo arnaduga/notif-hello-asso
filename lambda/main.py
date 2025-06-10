@@ -401,10 +401,14 @@ def lambda_handler(event, context):
         today = datetime.now(timezone.utc).date()
 
         first_day_current_month = today.replace(day=1)
-        to_date = first_day_current_month - timedelta(days=1)
-        from_date = to_date.replace(day=1)
+        
+        to_date = today.replace(day=7) #if ot the last day of the previous month
+        to_date_previous_month = first_day_current_month - timedelta(days=1) #if last day of the previous month
+
+        from_date = to_date_previous_month.replace(day=1)
         from_date_str = from_date.strftime('%Y-%m-%d')
         to_date_str = to_date.strftime('%Y-%m-%d')
+
         logger.info(f"Calculated dates for previous month: from={from_date_str}, to={to_date_str}")
 
         # 1. Obtenir le token d'authentification
